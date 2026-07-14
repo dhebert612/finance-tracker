@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import { config } from './config/config.js';
 import { pool } from './db/pool.js';
 import { authRoutes } from './routes/auth.routes.js';
+import { incomeSourceRoutes } from './routes/income-source.routes.js';
 
 const server = Fastify({
   logger: true,
@@ -22,7 +23,8 @@ server.get('/health', async () => {
 });
 
 // API routes — v1
-await server.register(authRoutes, { prefix: '/api/v1/auth' });
+await server.register(authRoutes,         { prefix: '/api/v1/auth' });
+await server.register(incomeSourceRoutes, { prefix: '/api/v1/income-sources' });
 
 // Start server
 try {
