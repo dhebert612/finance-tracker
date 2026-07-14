@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import { config } from './config/config.js';
 import { pool } from './db/pool.js';
+import { authRoutes } from './routes/auth.routes.js';
 
 const server = Fastify({
   logger: true,
@@ -11,7 +12,7 @@ const server = Fastify({
 // Plugins
 await server.register(cookie);
 await server.register(cors, {
-  origin: config.server.nodeEnv === 'development' ? true : process.env.FRONTEND_URL,
+  origin:      config.server.nodeEnv === 'development' ? true : process.env.FRONTEND_URL,
   credentials: true,
 });
 
@@ -21,11 +22,10 @@ server.get('/health', async () => {
 });
 
 // API routes — v1
-// routes will be registered here as we build them
+await server.register(authRoutes, { prefix: '/api/v1/auth' });
 
 // Start server
 try {
-  // Verify DB connection on startup
   const client = await pool.connect();
   client.release();
   console.log('✓ Database connected');
