@@ -6,6 +6,7 @@ import { pool } from './db/pool.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { incomeSourceRoutes } from './routes/income-source.routes.js';
 import { paycheckRoutes } from './routes/paycheck.routes.js';
+import { billRoutes } from './routes/bill.routes.js';
 
 const server = Fastify({
   logger: true,
@@ -27,6 +28,7 @@ server.get('/health', async () => {
 await server.register(authRoutes,         { prefix: '/api/v1/auth' });
 await server.register(incomeSourceRoutes, { prefix: '/api/v1/income-sources' });
 await server.register(paycheckRoutes,     { prefix: '/api/v1/paychecks' });
+await server.register(billRoutes,         { prefix: '/api/v1/bills' });
 
 // Start server
 try {
