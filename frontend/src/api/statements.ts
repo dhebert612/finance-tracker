@@ -81,4 +81,16 @@ export const statementsApi = {
     );
     return data;
   },
+
+  async saveAnalysis(accountId: string, data: {
+    statement_date: string;
+    due_date: string;
+    closing_balance: number;
+    minimum_payment?: number;
+    pdf_path?: string;
+    transactions: ExtractedTransaction[];
+  }): Promise<{ statement: CreditStatement; transactions_saved: number }> {
+    const { data: result } = await apiClient.post(`/statements/accounts/${accountId}/save-analysis`, data);
+    return result;
+  },
 };

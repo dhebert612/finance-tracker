@@ -3,7 +3,7 @@ import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
 import { extractTextFromPdf } from '../services/pdf.service.js';
-import { statementRepository } from '../repositories/statement.repository.js';
+import { statementRepository, saveAnalysisTransactions } from '../repositories/statement.repository.js';
 import { analyzeStatement } from '../services/groq.service.js';
 import { config } from '../config/config.js';
 
@@ -124,4 +124,45 @@ export const statementHandler = {
     }
   },
 
+};
+
+export const saveAnalysisHandler = {
+  async saveAnalysis(request: FastifyRequest<{ Params: { accountId: string } }>, reply: FastifyReply) {
+    const body = request.body as {
+      statement_date: string;
+      due_date: string;
+      closing_balance: number;
+      minimum_payment?: number;
+      pdf_path?: string;
+      transactions: { date: string; merchant: string; amount: number; category: string }[];
+    };
+
+    const { statement_date, due_date, closing_balance, minimum_payment, pdf_path, transactions } = body;
+
+    if (!statement_date || !due_date || !closing_balance) {
+      return reply.status(400).send({ error: 'statement_date, due_date, and closing_balance are required' });
+    }
+
+    // Save statement record
+    const statement = await statementRepository.createStatement(
+      request.params.accountId,
+      statement_date,
+      due_date,
+      closing_balance,
+      minimum_payment ?? null,
+      pdf_path ?? null
+    );
+
+    // Save transactions
+    if (transactions?.length > 0) {
+      await saveAnalysisTransactions(request.params.accountId, statement.id, transactions);
+    }
+
+    await statementRepository.markAnalyzed(statement.id);
+
+    return reply.status(201).send({
+      statement,
+      transactions_saved: transactions?.length ?? 0,
+    });
+  },
 };

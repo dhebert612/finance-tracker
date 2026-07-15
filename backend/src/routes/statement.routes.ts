@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { authenticate } from '../middleware/authenticate.js';
-import { statementHandler } from '../handlers/statement.handler.js';
+import { statementHandler, saveAnalysisHandler } from '../handlers/statement.handler.js';
 
 export async function statementRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.addHook('preHandler', authenticate);
@@ -11,12 +11,15 @@ export async function statementRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.delete('/accounts/:id',   statementHandler.deleteAccount);
 
   // Statements per account
-  fastify.get('/accounts/:accountId/statements',          statementHandler.getStatements);
-  fastify.post('/statements',                             statementHandler.createStatement);
+  fastify.get('/accounts/:accountId/statements',        statementHandler.getStatements);
+  fastify.post('/statements',                           statementHandler.createStatement);
 
   // Upload PDF and analyze in one step
-  fastify.post('/accounts/:accountId/upload-analyze',     statementHandler.uploadAndAnalyze);
+  fastify.post('/accounts/:accountId/upload-analyze',   statementHandler.uploadAndAnalyze);
 
   // Analyze pasted text directly
-  fastify.post('/accounts/:accountId/analyze-text',       statementHandler.analyzeText);
+  fastify.post('/accounts/:accountId/analyze-text',     statementHandler.analyzeText);
+
+  // Save analysis results to DB
+  fastify.post('/accounts/:accountId/save-analysis',    saveAnalysisHandler.saveAnalysis);
 }

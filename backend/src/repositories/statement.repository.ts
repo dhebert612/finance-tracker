@@ -127,3 +127,29 @@ export const statementRepository = {
   },
 
 };
+
+export async function saveAnalysisTransactions(
+  accountId: string,
+  statementId: string,
+  transactions: { date: string; merchant: string; amount: number; category: string }[]
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const txn of transactions) {
+      await client.query(
+        `INSERT INTO transactions
+           (account_id, transaction_date, merchant_name, amount, currency, category, source)
+         VALUES ($1, $2, $3, $4, 'CAD', $5, 'pdf_import')
+         ON CONFLICT DO NOTHING`,
+        [accountId, txn.date, txn.merchant, txn.amount, txn.category]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}

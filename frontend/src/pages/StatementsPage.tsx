@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { statementsApi } from '../api/statements.js';
 import type { CreditAccount, CreditStatement, StatementAnalysis } from '../api/statements.js';
 import { Plus, X, CreditCard, Upload, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
+import { statementsApi } from '../api/statements.js';
 
 function formatCurrency(amount: string | number): string {
   return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' })
@@ -55,6 +55,116 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   );
 }
 
+// ─── Save Statement Modal ─────────────────────────────────────────────────────
+
+function SaveStatementModal({
+  account,
+  analysis,
+  amountDue,
+  pdfPath,
+  onClose,
+  onSuccess,
+}: {
+  account: CreditAccount;
+  analysis: StatementAnalysis;
+  amountDue: string;
+  pdfPath?: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const today = new Date().toISOString().split('T')[0];
+  const [form, setForm] = useState({
+    statement_date: today,
+    due_date: today,
+    closing_balance: amountDue || '',
+    minimum_payment: '',
+  });
+  const [saved, setSaved] = useState(false);
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: () => statementsApi.saveAnalysis(account.id, {
+      statement_date:  form.statement_date,
+      due_date:        form.due_date,
+      closing_balance: parseFloat(form.closing_balance),
+      minimum_payment: form.minimum_payment ? parseFloat(form.minimum_payment) : undefined,
+      pdf_path:        pdfPath,
+      transactions:    analysis.transactions,
+    }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['statements', account.id] });
+      setSaved(true);
+      setTimeout(() => { onSuccess(); }, 1500);
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-stone-100">
+          <div>
+            <h3 className="text-sm font-semibold text-stone-800">Save statement</h3>
+            <p className="text-xs text-stone-400 mt-0.5">{analysis.total_transactions} transactions will be saved</p>
+          </div>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600"><X size={16} /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          {saved ? (
+            <div className="text-center py-4">
+              <div className="text-green-500 text-2xl mb-2">✓</div>
+              <p className="text-sm font-medium text-stone-800">Statement saved!</p>
+              <p className="text-xs text-stone-400 mt-1">{analysis.total_transactions} transactions added to your history</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Statement date</label>
+                  <input type="date" value={form.statement_date}
+                    onChange={(e) => setForm({ ...form, statement_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Due date</label>
+                  <input type="date" value={form.due_date}
+                    onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Closing balance (amount due)</label>
+                  <input type="number" step="0.01" value={form.closing_balance}
+                    onChange={(e) => setForm({ ...form, closing_balance: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    placeholder="157.91" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Minimum payment <span className="text-stone-400">(optional)</span></label>
+                  <input type="number" step="0.01" value={form.minimum_payment}
+                    onChange={(e) => setForm({ ...form, minimum_payment: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    placeholder="10.00" />
+                </div>
+              </div>
+              <div className="bg-stone-50 rounded-lg px-3 py-2 text-xs text-stone-500">
+                {analysis.total_transactions} transactions totaling {new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(analysis.total_spent)} will be saved to your transaction history.
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-medium text-stone-600 border border-stone-200 hover:bg-stone-50">Cancel</button>
+                <button onClick={() => mutation.mutate()} disabled={mutation.isPending || !form.closing_balance}
+                  className="flex-1 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: '#c9922a' }}>
+                  {mutation.isPending ? 'Saving...' : 'Save statement'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PDF Analyzer ─────────────────────────────────────────────────────────────
 
 function PdfAnalyzer({ account }: { account: CreditAccount }) {
@@ -62,6 +172,8 @@ function PdfAnalyzer({ account }: { account: CreditAccount }) {
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState<StatementAnalysis | null>(null);
   const [amountDue, setAmountDue] = useState<string>('');
+  const [pdfPath, setPdfPath] = useState<string | undefined>();
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<'pdf' | 'text'>('pdf');
@@ -89,6 +201,7 @@ function PdfAnalyzer({ account }: { account: CreditAccount }) {
         result = await statementsApi.analyzeText(account.id, text);
       }
       setAnalysis(result.analysis);
+      setPdfPath(result.pdf_path);
     } catch (err: any) {
       setError(err.response?.data?.error ?? 'Analysis failed');
     } finally {
@@ -215,6 +328,12 @@ function PdfAnalyzer({ account }: { account: CreditAccount }) {
                 <div className="text-lg font-bold text-amber-900">{analysis.total_transactions}</div>
               </div>
             </div>
+            <button
+              onClick={() => setShowSaveModal(true)}
+              className="w-full mt-3 pt-3 border-t border-amber-200 text-sm font-medium text-amber-700 hover:text-amber-900 transition text-left"
+            >
+              Save statement + {analysis.total_transactions} transactions →
+            </button>
           </div>
 
           {/* Flagged */}
@@ -263,6 +382,16 @@ function PdfAnalyzer({ account }: { account: CreditAccount }) {
           </div>
 
         </div>
+      )}
+      {showSaveModal && analysis && (
+        <SaveStatementModal
+          account={account}
+          analysis={analysis}
+          amountDue={amountDue}
+          pdfPath={pdfPath}
+          onClose={() => setShowSaveModal(false)}
+          onSuccess={() => { setShowSaveModal(false); handleReset(); }}
+        />
       )}
     </div>
   );
