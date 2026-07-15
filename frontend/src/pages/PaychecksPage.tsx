@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paychecksApi } from '../api/paychecks.js';
 import { allocationTemplateApi } from '../api/allocation-template.js';
 import { dashboardApi } from '../api/dashboard.js';
+import { incomeSourcesApi, formatFrequency } from '../api/income-sources.js';
 import type { Paycheck, PaycheckWithAllocations } from '../api/paychecks.js';
 import type { TemplateRule } from '../api/allocation-template.js';
 import type { NextPaycheckAlert } from '../api/dashboard.js';
+import type { IncomeSource, CreateIncomeSourceInput } from '../api/income-sources.js';
 import { Plus, Trash2, Save, X, ChevronRight, AlertCircle } from 'lucide-react';
 
 function formatCurrency(amount: string | number): string {
@@ -19,6 +21,117 @@ function formatDate(dateStr: string): string {
 
 function formatFullDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// ─── Income Sources Manager ───────────────────────────────────────────────────
+
+function AddIncomeSourceModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState<CreateIncomeSourceInput>({ name: '', type: 'employment', pay_frequency: 'biweekly' });
+  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: incomeSourcesApi.create,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['income-sources'] }); onSuccess(); },
+    onError: (err: any) => { setError(err.response?.data?.error ?? 'Something went wrong'); },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault(); setError(null);
+    mutation.mutate(form);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-5 border-b border-stone-100">
+          <h3 className="text-sm font-semibold text-stone-800">Add income source</h3>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600"><X size={16} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-3">
+          {error && <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1">Name</label>
+            <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg border border-stone-300 text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              placeholder="e.g. Employer Inc., Freelance..." />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1">Type</label>
+            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+              className="w-full px-3 py-2 rounded-lg border border-stone-300 text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+              <option value="employment">Employment</option>
+              <option value="freelance">Freelance</option>
+              <option value="rental">Rental</option>
+              <option value="investment">Investment</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1">Pay frequency</label>
+            <select value={form.pay_frequency} onChange={(e) => setForm({ ...form, pay_frequency: e.target.value as any })}
+              className="w-full px-3 py-2 rounded-lg border border-stone-300 text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Bi-weekly</option>
+              <option value="semi_monthly">Semi-monthly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-medium text-stone-600 border border-stone-200 hover:bg-stone-50">Cancel</button>
+            <button type="submit" disabled={mutation.isPending} className="flex-1 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: '#c9922a' }}>
+              {mutation.isPending ? 'Saving...' : 'Add source'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function IncomeSourcesManager() {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: sources = [] } = useQuery({ queryKey: ['income-sources'], queryFn: incomeSourcesApi.getAll });
+
+  const deleteMutation = useMutation({
+    mutationFn: incomeSourcesApi.remove,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['income-sources'] }); },
+  });
+
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-stone-800">My income sources</h2>
+          <p className="text-xs text-stone-400 mt-0.5">per person — you only manage your own</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        {sources.map((source: IncomeSource) => (
+          <div key={source.id} className="group relative flex flex-col border border-stone-200 rounded-lg px-4 py-3 min-w-36 hover:border-stone-300 transition">
+            <span className="text-sm font-medium text-stone-800">{source.name}</span>
+            <span className="text-xs text-stone-400 mt-0.5">{source.type} · {formatFrequency(source.pay_frequency)}</span>
+            <button
+              onClick={() => deleteMutation.mutate(source.id)}
+              className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-stone-300 hover:text-red-400 transition-all"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 border border-dashed border-stone-300 rounded-lg px-4 py-3 text-sm text-stone-400 hover:text-amber-600 hover:border-amber-300 transition min-w-36"
+        >
+          <Plus size={14} />
+          Add source
+        </button>
+      </div>
+      {showAddModal && <AddIncomeSourceModal onClose={() => setShowAddModal(false)} onSuccess={() => setShowAddModal(false)} />}
+    </div>
+  );
 }
 
 // ─── Next Paycheck Alert ──────────────────────────────────────────────────────
@@ -363,6 +476,9 @@ export default function PaychecksPage() {
       </div>
 
       <div className="flex flex-col gap-6">
+
+        {/* Income sources */}
+        <IncomeSourcesManager />
 
         {/* Paycheck history */}
         <div>
