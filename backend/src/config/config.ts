@@ -16,7 +16,7 @@ function getEnv(key: string, fallback: string): string {
 
 export const config = {
   server: {
-    port: parseInt(getEnv('PORT', '8080')),
+    port:    parseInt(getEnv('PORT', '8080')),
     nodeEnv: getEnv('NODE_ENV', 'development'),
   },
   db: {
@@ -28,8 +28,14 @@ export const config = {
     sslMode:  getEnv('DB_SSL_MODE', 'disable'),
   },
   jwt: {
-    secret:              requireEnv('JWT_SECRET'),
-    accessExpiryHours:   1,
-    refreshExpiryDays:   30,
+    secret:            requireEnv('JWT_SECRET'),
+    accessExpiryHours: 1,
+    refreshExpiryDays: 30,
+  },
+  uploads: {
+    dir: getEnv('UPLOAD_DIR', './uploads'),
+  },
+  groq: {
+    apiKey: getEnv('GROQ_API_KEY', ''),
   },
 } as const;

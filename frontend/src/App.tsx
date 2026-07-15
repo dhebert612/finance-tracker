@@ -8,6 +8,7 @@ import RegisterPage from './pages/RegisterPage.js';
 import DashboardPage from './pages/DashboardPage.js';
 import PaychecksPage from './pages/PaychecksPage.js';
 import BillsPage from './pages/BillsPage.js';
+import StatementsPage from './pages/StatementsPage.js';
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,9 @@ export default function App() {
           }/>
           <Route path="/bills" element={
             <ProtectedRoute><BillsPage /></ProtectedRoute>
+          }/>
+          <Route path="/statements" element={
+            <ProtectedRoute><StatementsPage /></ProtectedRoute>
           }/>
 
           {/* Fallback */}
