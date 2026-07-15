@@ -1,14 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { paycheckRepository } from '../repositories/paycheck.repository.js';
+import { allocationTemplateRepository } from '../repositories/allocation-template.repository.js';
 import { splitPaycheck } from '../services/splitter.service.js';
-
-const bucketSchema = z.object({
-  bucket_name: z.string().min(1, 'Bucket name is required').max(100),
-  split_type:  z.enum(['percent', 'fixed', 'remainder']),
-  value:       z.number().min(0),
-  sort_order:  z.number().int().min(0),
-});
 
 const createSchema = z.object({
   income_source_id: z.string().uuid('Invalid income source ID'),
@@ -16,7 +10,6 @@ const createSchema = z.object({
   gross_amount:     z.number().positive('Gross amount must be positive'),
   net_amount:       z.number().positive('Net amount must be positive'),
   note:             z.string().max(500).optional(),
-  buckets:          z.array(bucketSchema).min(1, 'At least one bucket is required'),
 });
 
 export const paycheckHandler = {
@@ -43,12 +36,20 @@ export const paycheckHandler = {
       });
     }
 
-    const { income_source_id, pay_date, gross_amount, net_amount, note, buckets } = parsed.data;
+    const { income_source_id, pay_date, gross_amount, net_amount, note } = parsed.data;
 
-    // Run the splitter
+    // Fetch user's saved template
+    const template = await allocationTemplateRepository.findByUser(request.userId);
+    if (!template || template.rules.length === 0) {
+      return reply.status(400).send({
+        error: 'No split template found. Please set up your bucket split template first.',
+      });
+    }
+
+    // Run the splitter using the template rules
     let resolvedBuckets;
     try {
-      resolvedBuckets = splitPaycheck(net_amount, buckets);
+      resolvedBuckets = splitPaycheck(net_amount, template.rules);
     } catch (err) {
       if (err instanceof Error) {
         const messages: Record<string, string> = {

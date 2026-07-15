@@ -25,12 +25,19 @@ export interface RecentPaycheck {
   allocations: PaycheckAllocation[];
 }
 
+export interface NextPaycheckAlert {
+  next_paycheck_date: string;
+  bills_due: UpcomingBill[];
+  total_due: number;
+}
+
 export interface DashboardSummary {
   income_this_month: number;
   spending_this_month: number;
   savings_rate: number;
   upcoming_bills: UpcomingBill[];
   recent_paychecks: RecentPaycheck[];
+  next_paycheck_alert: NextPaycheckAlert | null;
 }
 
 export const dashboardApi = {

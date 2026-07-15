@@ -8,6 +8,7 @@ import { incomeSourceRoutes } from './routes/income-source.routes.js';
 import { paycheckRoutes } from './routes/paycheck.routes.js';
 import { billRoutes } from './routes/bill.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
+import { allocationTemplateRoutes } from './routes/allocation-template.routes.js';
 
 const server = Fastify({
   logger: true,
@@ -30,7 +31,8 @@ await server.register(authRoutes,         { prefix: '/api/v1/auth' });
 await server.register(incomeSourceRoutes, { prefix: '/api/v1/income-sources' });
 await server.register(paycheckRoutes,     { prefix: '/api/v1/paychecks' });
 await server.register(billRoutes,         { prefix: '/api/v1/bills' });
-await server.register(dashboardRoutes,    { prefix: '/api/v1/dashboard' });
+await server.register(dashboardRoutes,          { prefix: '/api/v1/dashboard' });
+await server.register(allocationTemplateRoutes, { prefix: '/api/v1/allocation-templates' });
 
 // Start server
 try {

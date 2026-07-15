@@ -6,6 +6,7 @@ import AppShell from './components/layout/AppShell.js';
 import LoginPage from './pages/LoginPage.js';
 import RegisterPage from './pages/RegisterPage.js';
 import DashboardPage from './pages/DashboardPage.js';
+import PaychecksPage from './pages/PaychecksPage.js';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,9 @@ export default function App() {
           {/* Protected routes */}
           <Route path="/" element={
             <ProtectedRoute><DashboardPage /></ProtectedRoute>
+          }/>
+          <Route path="/paychecks" element={
+            <ProtectedRoute><PaychecksPage /></ProtectedRoute>
           }/>
 
           {/* Fallback */}
