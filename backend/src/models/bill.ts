@@ -7,6 +7,7 @@ export interface Bill {
   amount: string;
   frequency: BillFrequency;
   due_day: number | null;
+  due_month: number | null;
   category: string | null;
   auto_pay_match: string | null;
   created_at: Date;
@@ -33,6 +34,7 @@ export interface CreateBillInput {
   amount: number;
   frequency: BillFrequency;
   due_day?: number;
+  due_month?: number;
   category?: string;
 }
 
@@ -41,6 +43,7 @@ export interface UpdateBillInput {
   amount?: number;
   frequency?: BillFrequency;
   due_day?: number | null;
+  due_month?: number | null;
   category?: string | null;
 }
 
